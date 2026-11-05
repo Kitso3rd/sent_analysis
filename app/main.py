@@ -16,24 +16,35 @@ def load_artifacts(model_path=MODEL_PATH, vectorizer_path=VECTORIZER_PATH):
 
 
 def predict_sentiment(text, model, vectorizer):
-    """Return the model's binary sentiment label for a single text string."""
+    """Return the predicted sentiment and its model probability score."""
     features = vectorizer.transform([text])
-    prediction = model.predict(features)[0]
-    return "positive" if prediction == 1 else "negative"
+    probabilities = model.predict_proba(features)[0]
+    prediction_index = probabilities.argmax()
+    prediction = model.classes_[prediction_index]
+    sentiment = "positive" if prediction == 1 else "negative"
+    confidence = float(probabilities[prediction_index])
+    return sentiment, confidence
 
 
 def render_app(ui, model, vectorizer):
     """Render the local prediction interface using the supplied Streamlit API."""
     ui.title("Sentiment Analysis")
-    text = ui.text_input("Enter your text")
+    ui.caption("Label guide: Positive = favorable opinion; Negative = unfavorable opinion.")
+    text = ui.text_area("Enter your text", height=150)
 
     if ui.button("Predict"):
         if not text.strip():
             ui.warning("Please enter some text to analyze.")
             return
 
-        sentiment = predict_sentiment(text, model, vectorizer)
-        ui.success(f"Sentiment: {sentiment}")
+        sentiment, confidence = predict_sentiment(text, model, vectorizer)
+        message = f"Sentiment: {sentiment.title()}"
+        if sentiment == "positive":
+            ui.success(message)
+        else:
+            ui.error(message)
+        ui.metric("Model confidence", f"{confidence:.1%}")
+        ui.caption("Confidence is the model's probability score, not a guarantee of correctness.")
 
 
 def main():
